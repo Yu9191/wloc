@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <img src="wloc.jpg" width="144" />
 </p>
 
@@ -75,3 +75,9 @@ https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.lpx
 - 选点页面需在代理模式下使用（Safari 走代理才能拦截储存请求）
 
 </details>
+
+---
+
+## 致谢
+
+- [NSNanoCat/Util](https://github.com/NSRingo/NanoKitFramework) - 跨平台脚本工具框架

@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
   <img src="wloc.jpg" width="144" />
 </p>
 
@@ -80,4 +80,5 @@ https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.lpx
 
 ## 致谢
 
+- [shadow-loc](https://github.com/xream/scripts) - 原始 WLOC 定位修改思路 by xream
 - [NSNanoCat/Util](https://github.com/NSRingo/NanoKitFramework) - 跨平台脚本工具框架

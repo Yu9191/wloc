@@ -2,7 +2,7 @@
 #!desc=修改 Apple 网络定位返回坐标，打开设置页面选点即可生效
 #!icon=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/wloc.jpg
 #!author=Yu9191 Rewrite
-#!homepage=https://github.com/Yu9191/Rewrite
+#!homepage=https://github.com/Yu9191/wloc
 
 [Argument]
 longitude = input, "113.94114", tag=经度(在线选点优先)

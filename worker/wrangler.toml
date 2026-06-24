@@ -1,0 +1,4 @@
+name = "wloc-spoofer"
+main = "wloc-worker.js"
+compatibility_date = "2024-01-01"
+# 纯静态页面，无需绑定 KV 或其他资源

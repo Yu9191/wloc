@@ -1,0 +1,17 @@
+{
+  "id": "wloc.settings",
+  "name": "WLOC 虚拟定位",
+  "author": "Yu9191 Rewrite",
+  "icon": "https://raw.githubusercontent.com/Yu9191/-/main/location.png",
+  "description": "Apple WLOC 网络定位修改 - 打开在线选点页面选位置即可自动写入",
+  "keys": ["wloc_settings"],
+  "settings": [
+    {
+      "id": "wloc_settings",
+      "name": "定位坐标(JSON)",
+      "val": "{\"longitude\":113.94114,\"latitude\":22.544577,\"accuracy\":25}",
+      "type": "textarea",
+      "desc": "由在线选点页面自动写入，无需手动编辑\n格式: {\"longitude\":经度, \"latitude\":纬度, \"accuracy\":精度}"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { parseCoords, gcj02ToWgs84, round6 } from "./parse.js";
 const app = new Hono();
 
 app.get("/", (c) => {
+  c.header("Cache-Control", "no-cache, no-store, must-revalidate");
   return c.html(getPageHtml());
 });
 

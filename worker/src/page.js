@@ -194,6 +194,7 @@ function setPos(newLat, newLon) {
   lat = newLat; lon = normLon(newLon); selected = true;
   marker.setLatLng([lat, lon]);
   document.getElementById('coords').textContent = '经度 ' + lon.toFixed(6) + '  纬度 ' + lat.toFixed(6);
+  autoQueryAlt();
 }
 
 function moveTo(newLat, newLon, zoom) {
@@ -374,6 +375,18 @@ async function lookupAlt(la, lo) {
     const d = await r.json();
     return (d && typeof d.alt === 'number') ? d.alt : null;
   } catch (e) { return null; }
+}
+// 选点即自动查海拔, 自动回填到海拔框(每次选点都会刷新; 旧请求被新选点取代时丢弃)
+let altReqToken = 0;
+async function autoQueryAlt() {
+  const inp = document.getElementById('altInput');
+  const token = ++altReqToken;
+  inp.placeholder = '查询中...';
+  const alt = await lookupAlt(lat, lon);
+  if (token !== altReqToken) return;
+  inp.placeholder = '海拔(米) 留空=不改/自动';
+  if (alt == null) return;
+  inp.value = alt;
 }
 // 计算本次要写入的海拔: 手填优先, 勾选自动则查询, 否则 null(不改)
 async function resolveAlt() {

@@ -36,12 +36,15 @@ app.get("/api/parse", async (c) => {
 // GET /api/geo?u=<地图链接>&cs=<gcj|none>&alt=<可选海拔>&format=json
 //   或 GET /api/geo?lat=..&lon=..&alt=..
 //   - 提供 alt 时原样回显；否则按坐标查公开高程 API(open-meteo) 取地面海拔。
-//   返回 {lat, lon, alt, name}; 不带 format=json 时返回 "lat=..&lon=..&alt=.." 文本。
+//   - 可选 &floor=楼层 (&floorHeight=层高,默认3m): 在地面海拔上叠加 (floor-1)*floorHeight；不带 floor 则返回纯地面海拔。
+//   返回 {lat, lon, alt, name}(带 floor 时额外含 ground, floor); 不带 format=json 时返回 "lat=..&lon=..&alt=.." 文本。
 app.get("/api/geo", async (c) => {
   const raw = c.req.query("u") || "";
   const cs = (c.req.query("cs") || "").toLowerCase();
   const fmt = (c.req.query("format") || "").toLowerCase();
   const altQ = c.req.query("alt");
+  const floorQ = c.req.query("floor");
+  const floorHeightQ = c.req.query("floorHeight");
   const latQ = c.req.query("lat");
   const lonQ = c.req.query("lon");
   c.header("Access-Control-Allow-Origin", "*");
@@ -71,8 +74,17 @@ app.get("/api/geo", async (c) => {
     } else {
       alt = await lookupElevation(lat, lon);
     }
+    // 可选: 叠加楼层离地高度 alt += (floor-1) * floorHeight(默认层高 3m)。不带 floor 则返回纯地面海拔。
+    const ground = alt;
+    let floor = null;
+    if (floorQ != null && floorQ !== "" && !Number.isNaN(parseInt(floorQ, 10))) {
+      floor = parseInt(floorQ, 10);
+      let fh = 3;
+      if (floorHeightQ != null && floorHeightQ !== "" && !Number.isNaN(parseFloat(floorHeightQ))) fh = parseFloat(floorHeightQ);
+      alt = Math.round((ground + (floor - 1) * fh) * 10) / 10;
+    }
     name = name || "";
-    if (fmt === "json") return c.json({ lat, lon, alt, name });
+    if (fmt === "json") return c.json(floor != null ? { lat, lon, alt, ground, floor, name } : { lat, lon, alt, name });
     return c.text(`lat=${lat}&lon=${lon}&alt=${alt}`);
   } catch (e) {
     return c.json({ error: String(e && e.message ? e.message : e) }, 422);

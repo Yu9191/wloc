@@ -96,6 +96,10 @@ body { font-family:-apple-system,system-ui,"SF Pro","Helvetica Neue",sans-serif;
         <input type="checkbox" id="altAuto" onchange="onAltAuto()" /> 自动查询地面海拔
       </label>
     </div>
+    <div class="input-row" style="margin-top:8px">
+      <input id="floorInput" type="number" step="1" min="1" placeholder="楼层(可选,自动海拔时叠加离地高度)" onchange="onAltAuto()" />
+      <input id="floorHeightInput" type="number" step="0.1" min="0" style="max-width:120px" placeholder="层高(米,默认3)" onchange="onAltAuto()" />
+    </div>
     <div class="row">
       <button class="btn btn-primary" id="saveBtn" onclick="save()">储存到设备</button>
       <button class="btn btn-secondary" onclick="addFav()">收藏位置</button>
@@ -331,11 +335,21 @@ async function onAltAuto() {
   inp.placeholder = '海拔(米) 留空=不改/自动';
   if (alt == null) { toast('海拔查询失败', 3000); return; }
   inp.value = alt;
-  toast('地面海拔 ' + alt + ' m');
+  const fl = floorParam();
+  toast(fl ? ('海拔 ' + alt + ' m (含楼层)') : ('地面海拔 ' + alt + ' m'));
+}
+// 读取楼层参数, 返回可拼接的 query 字符串(无楼层则空)
+function floorParam() {
+  const f = (document.getElementById('floorInput').value || '').trim();
+  if (f === '' || Number.isNaN(parseInt(f, 10))) return '';
+  let qs = '&floor=' + parseInt(f, 10);
+  const fh = (document.getElementById('floorHeightInput').value || '').trim();
+  if (fh !== '' && !Number.isNaN(parseFloat(fh))) qs += '&floorHeight=' + parseFloat(fh);
+  return qs;
 }
 async function lookupAlt(la, lo) {
   try {
-    const r = await fetch(GEO_API + '?format=json&lat=' + la + '&lon=' + lo + '&cs=none', { mode:'cors', cache:'no-store' });
+    const r = await fetch(GEO_API + '?format=json&lat=' + la + '&lon=' + lo + '&cs=none' + floorParam(), { mode:'cors', cache:'no-store' });
     const d = await r.json();
     return (d && typeof d.alt === 'number') ? d.alt : null;
   } catch (e) { return null; }

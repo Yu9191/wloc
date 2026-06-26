@@ -1,5 +1,5 @@
 name: Apple WLOC 定位修改
-desc: "修改 Apple 网络定位返回坐标(经纬度+精度+海拔) | 选点页面: https://wloc-pages.pages.dev/"
+desc: "修改 Apple 网络定位返回坐标(经纬度+精度+海拔) | 选点页面: https://wloc-spoofer.daoyufan.workers.dev/"
 author: Yu9191 Rewrite
 homepage: https://github.com/Yu9191/wloc
 icon: https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/wloc.jpg

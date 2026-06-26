@@ -15,7 +15,7 @@ MITM 主机名：`gs-loc.apple.com, gs-loc-cn.apple.com`
 
 ## Worker 地址
 
-- 选点页：https://wloc-pages.pages.dev/
+- 选点页：https://wloc-spoofer.daoyufan.workers.dev/
 - 海拔查询接口：`GET /api/geo?lat=..&lon=..` → 返回 `{lat,lon,alt,name}`(地面海拔来自 open-meteo,无需 key);带 `?alt=123` 则直接回显。
 
 ## 海拔测试

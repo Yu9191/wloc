@@ -6,10 +6,10 @@
 
 | 工具 | 订阅链接 |
 |------|----------|
-| Surge | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.sgmodule` |
-| Loon | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.lpx` |
-| Stash | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.stoverride` |
-| QuantumultX | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.conf` |
+| Surge | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/modules/wloc.sgmodule` |
+| Loon | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/modules/wloc.lpx` |
+| Stash | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/modules/wloc.stoverride` |
+| QuantumultX | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/modules/wloc.conf` |
 
 MITM 主机名：`gs-loc.apple.com, gs-loc-cn.apple.com`
 

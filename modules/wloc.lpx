@@ -1,6 +1,6 @@
 #!name=Apple WLOC 定位修改
 #!desc=修改 Apple 网络定位返回坐标 | 快捷指令(推荐): 设置地理位置 https://www.icloud.com/shortcuts/a82717d8fdad4e6280866fcf911173f7 清理恢复位置 https://www.icloud.com/shortcuts/f42632d406504f24a2cd163af4fe012f
-#!icon=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/wloc.jpg
+#!icon=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/wloc.jpg
 #!author=Yu9191 Rewrite
 #!homepage=https://github.com/Yu9191/wloc
 #!openUrl=https://wloc-pages.pages.dev/
@@ -13,8 +13,8 @@ altitude = input, "", tag=海拔(米,留空=不修改)
 logLevel = select, "info", "off", "error", "warn", "debug", "all", tag=日志级别
 
 [Script]
-http-response ^https?:\/\/gs-loc(-cn)?\.apple\.com\/clls\/wloc script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/dist/wloc.js, requires-body=true, binary-body-mode=true, timeout=30, tag=Apple WLOC, argument=[{longitude},{latitude},{accuracy},{altitude},{logLevel}]
-http-request ^https?:\/\/gs-loc(-cn)?\.apple\.com\/wloc-settings\/save script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/dist/wloc-settings.js, timeout=10, tag=WLOC Settings
+http-response ^https?:\/\/gs-loc(-cn)?\.apple\.com\/clls\/wloc script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/dist/wloc.js, requires-body=true, binary-body-mode=true, timeout=30, tag=Apple WLOC, argument=[{longitude},{latitude},{accuracy},{altitude},{logLevel}]
+http-request ^https?:\/\/gs-loc(-cn)?\.apple\.com\/wloc-settings\/save script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/dist/wloc-settings.js, timeout=10, tag=WLOC Settings
 
 [MITM]
 hostname = gs-loc.apple.com, gs-loc-cn.apple.com

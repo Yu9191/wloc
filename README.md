@@ -6,16 +6,16 @@
 
 | 工具 | 订阅链接 |
 |------|----------|
-| Surge | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/modules/wloc.sgmodule` |
-| Loon | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/modules/wloc.lpx` |
-| Stash | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/modules/wloc.stoverride` |
-| QuantumultX | `https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/modules/wloc.conf` |
+| Surge | `https://raw.githubusercontent.com/WhiteSoulss/wloc/refs/heads/geo/modules/wloc.sgmodule` |
+| Loon | `https://raw.githubusercontent.com/WhiteSoulss/wloc/refs/heads/geo/modules/wloc.lpx` |
+| Stash | `https://raw.githubusercontent.com/WhiteSoulss/wloc/refs/heads/geo/modules/wloc.stoverride` |
+| QuantumultX | `https://raw.githubusercontent.com/WhiteSoulss/wloc/refs/heads/geo/modules/wloc.conf` |
 
 MITM 主机名：`gs-loc.apple.com, gs-loc-cn.apple.com`
 
 ## Worker 地址
 
-- 选点页：https://wloc-spoofer.daoyufan.workers.dev/
+- 选点页：https://whitesoulss-wloc.celestial-daphne.workers.dev/
 - 海拔查询接口：`GET /api/geo?lat=..&lon=..` → 返回 `{lat,lon,alt,name}`(地面海拔来自 open-meteo,无需 key);带 `?alt=123` 则直接回显。
 
 ## 海拔测试

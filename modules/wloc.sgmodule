@@ -1,14 +1,14 @@
 #!name=Apple WLOC 定位修改
-#!desc=修改 Apple 网络定位返回坐标(经纬度+精度+海拔) | 选点页面: https://wloc-spoofer.daoyufan.workers.dev/
-#!author=Yu9191 Rewrite
-#!homepage=https://github.com/Yu9191/wloc
+#!desc=修改 Apple 网络定位返回坐标(经纬度+精度+海拔) | 选点页面: https://whitesoulss-wloc.celestial-daphne.workers.dev/
+#!author=WhiteSoulss Rewrite
+#!homepage=https://github.com/WhiteSoulss/wloc
 #!category=Tools
 #!arguments=经度:113.94114, 纬度:22.544577, 精度:25, 海拔:15, 日志级别:info
 #!arguments-desc=经度/纬度: 默认坐标(在线选点储存后优先)\n精度: GPS精度(米)\n海拔: 海拔(米,留空=不修改,默认15为该坐标地面海拔)\n日志级别: off/error/warn/info/debug/all\n\n使用方法: 打开选点页面(worker/pages) -> 选位置 -> 储存到设备
 
 [Script]
-Apple WLOC = type=http-response, pattern="^https?:\/\/gs-loc(-cn)?\.apple\.com\/clls\/wloc", requires-body=1, binary-body-mode=1, max-size=0, timeout=30, script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/dist/wloc.js, argument=longitude={{{经度}}}&latitude={{{纬度}}}&accuracy={{{精度}}}&altitude={{{海拔}}}&logLevel={{{日志级别}}}
-WLOC Settings = type=http-request, pattern="^https?:\/\/gs-loc(-cn)?\.apple\.com\/wloc-settings\/save", requires-body=0, max-size=0, timeout=10, script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/geo/dist/wloc-settings.js
+Apple WLOC = type=http-response, pattern="^https?:\/\/gs-loc(-cn)?\.apple\.com\/clls\/wloc", requires-body=1, binary-body-mode=1, max-size=0, timeout=30, script-path=https://raw.githubusercontent.com/WhiteSoulss/wloc/refs/heads/geo/dist/wloc.js, argument=longitude={{{经度}}}&latitude={{{纬度}}}&accuracy={{{精度}}}&altitude={{{海拔}}}&logLevel={{{日志级别}}}
+WLOC Settings = type=http-request, pattern="^https?:\/\/gs-loc(-cn)?\.apple\.com\/wloc-settings\/save", requires-body=0, max-size=0, timeout=10, script-path=https://raw.githubusercontent.com/WhiteSoulss/wloc/refs/heads/geo/dist/wloc-settings.js
 
 [MITM]
 hostname = %APPEND% gs-loc.apple.com, gs-loc-cn.apple.com

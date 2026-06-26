@@ -90,6 +90,12 @@ body { font-family:-apple-system,system-ui,"SF Pro","Helvetica Neue",sans-serif;
   <div class="card">
     <h3>选择目标位置</h3>
     <div class="coords" id="coords">点击地图或使用下方工具选择位置</div>
+    <div class="input-row" style="margin-top:10px">
+      <input id="altInput" type="number" step="0.1" placeholder="海拔(米) 留空=不改/自动" />
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray);white-space:nowrap">
+        <input type="checkbox" id="altAuto" onchange="onAltAuto()" /> 自动查询地面海拔
+      </label>
+    </div>
     <div class="row">
       <button class="btn btn-primary" id="saveBtn" onclick="save()">储存到设备</button>
       <button class="btn btn-secondary" onclick="addFav()">收藏位置</button>
@@ -106,7 +112,7 @@ body { font-family:-apple-system,system-ui,"SF Pro","Helvetica Neue",sans-serif;
   <div class="card">
     <h3>当前生效坐标</h3>
     <div class="active-loc" id="activeLoc">
-      <div class="label">设备持久化数据 (wloc_settings)</div>
+      <div class="label">设备持久化数据 (wloc_settings_v2)</div>
       <div class="value" id="activeValue">查询中...</div>
     </div>
     <div class="row">
@@ -145,6 +151,7 @@ body { font-family:-apple-system,system-ui,"SF Pro","Helvetica Neue",sans-serif;
 </div>
 <script>
 const SAVE_API = 'https://gs-loc.apple.com/wloc-settings/save';
+const GEO_API = location.origin + '/api/geo';
 const FAV_KEY = 'wloc_favorites';
 let lat = 22.544577, lon = 113.94114;
 let selected = false;
@@ -284,7 +291,8 @@ function queryActive() {
       if (d.success && d.longitude && d.latitude) {
         activeLon = parseFloat(d.longitude);
         activeLat = parseFloat(d.latitude);
-        el.textContent = '经度 ' + activeLon.toFixed(6) + '  纬度 ' + activeLat.toFixed(6) + (d.accuracy ? '  精度 ' + d.accuracy + 'm' : '');
+        const altTxt = (d.altitude != null && d.altitude !== '') ? '  海拔 ' + d.altitude + 'm' : '';
+        el.textContent = '经度 ' + activeLon.toFixed(6) + '  纬度 ' + activeLat.toFixed(6) + (d.accuracy ? '  精度 ' + d.accuracy + 'm' : '') + altTxt;
         renderFavs();
       } else {
         activeLon = null; activeLat = null;
@@ -312,6 +320,34 @@ function clearActive() {
     .catch(() => { toast('清除失败 - 请检查模块配置', 3000); });
 }
 
+/* ---- Altitude helpers ---- */
+async function onAltAuto() {
+  const auto = document.getElementById('altAuto').checked;
+  const inp = document.getElementById('altInput');
+  if (!auto) return;
+  if (!selected) { toast('请先选择位置再自动查询海拔'); document.getElementById('altAuto').checked = false; return; }
+  inp.placeholder = '查询中...';
+  const alt = await lookupAlt(lat, lon);
+  inp.placeholder = '海拔(米) 留空=不改/自动';
+  if (alt == null) { toast('海拔查询失败', 3000); return; }
+  inp.value = alt;
+  toast('地面海拔 ' + alt + ' m');
+}
+async function lookupAlt(la, lo) {
+  try {
+    const r = await fetch(GEO_API + '?format=json&lat=' + la + '&lon=' + lo + '&cs=none', { mode:'cors', cache:'no-store' });
+    const d = await r.json();
+    return (d && typeof d.alt === 'number') ? d.alt : null;
+  } catch (e) { return null; }
+}
+// 计算本次要写入的海拔: 手填优先, 勾选自动则查询, 否则 null(不改)
+async function resolveAlt() {
+  const raw = (document.getElementById('altInput').value || '').trim();
+  if (raw !== '' && !Number.isNaN(parseFloat(raw))) return parseFloat(raw);
+  if (document.getElementById('altAuto').checked) return await lookupAlt(lat, lon);
+  return null;
+}
+
 /* ---- Save to device ---- */
 async function save() {
   if (!selected) { toast('请先在地图上选择一个位置'); return; }
@@ -319,15 +355,18 @@ async function save() {
   btn.textContent = '储存中...'; btn.disabled = true;
   showError(false);
   try {
-    const r = await fetch(SAVE_API + '?lon=' + lon + '&lat=' + lat + '&acc=25', {
+    const alt = await resolveAlt();
+    const altQs = (alt != null && !Number.isNaN(alt)) ? '&alt=' + alt : '';
+    const r = await fetch(SAVE_API + '?lon=' + lon + '&lat=' + lat + '&acc=25' + altQs, {
       method: 'GET', mode: 'cors', cache: 'no-store'
     });
     const d = await r.json();
     if (d.success) {
       activeLon = lon; activeLat = lat;
+      const altTxt = (alt != null && !Number.isNaN(alt)) ? '  海拔 ' + alt + 'm' : '';
       btn.textContent = '\\u2713 已储存'; btn.className = 'btn btn-primary success';
-      document.getElementById('status').textContent = '\\u2713 已写入: ' + lon.toFixed(6) + ', ' + lat.toFixed(6) + ' \\u00b7 ' + new Date().toLocaleTimeString('zh-CN');
-      document.getElementById('activeValue').textContent = '经度 ' + lon.toFixed(6) + '  纬度 ' + lat.toFixed(6) + '  精度 25m';
+      document.getElementById('status').textContent = '\\u2713 已写入: ' + lon.toFixed(6) + ', ' + lat.toFixed(6) + altTxt + ' \\u00b7 ' + new Date().toLocaleTimeString('zh-CN');
+      document.getElementById('activeValue').textContent = '经度 ' + lon.toFixed(6) + '  纬度 ' + lat.toFixed(6) + '  精度 25m' + altTxt;
       renderFavs();
       toast('\\u2713 坐标已写入设备，下次定位生效');
       setTimeout(() => { btn.textContent='储存到设备'; btn.className='btn btn-primary'; btn.disabled=false; }, 2500);

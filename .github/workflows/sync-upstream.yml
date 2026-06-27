@@ -1,0 +1,35 @@
+name: 定时强制覆盖同步上游
+
+on:
+  # 1. 每天北京时间 0 点和 12 点自动运行（UTC 时间 4:00 和 16:00）
+  schedule:
+    - cron: '0 4,16 * * *'
+  # 2. 支持去 Actions 面板手动点击运行
+  workflow_dispatch:
+
+jobs:
+  force-sync:
+    runs-on: ubuntu-latest
+    steps:
+      # 检出你自己的仓库（拉取全部历史）
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拉取完整历史，确保可以强制重置
+
+      # 添加上游仓库（务必改成原作者的地址）
+      - name: 添加上游源
+        run: git remote add upstream https://github.com/Yu9191/wloc.git
+
+      # 拉取上游最新的 main 分支
+      - name: 拉取上游代码
+        run: git fetch upstream main
+
+      # 强制重置到上游的 main 分支
+      - name: 强制覆盖本地分支
+        run: |
+          git checkout main
+          git reset --hard upstream/main
+      # 强制推送到你的远程仓库（使用系统自带的 GITHUB_TOKEN，无需配置）
+      - name: 强制推送覆盖远程
+        run: git push origin main --force

@@ -206,6 +206,66 @@ npm run deploy
 > 免费账户每天 10 万次请求，个人使用完全够用。
 
 <details>
+<summary>自有服务器部署（Node.js / Docker）</summary>
+
+如果不想依赖 Cloudflare，也可以部署到自己的 VPS / NAS / Docker 主机。自托管服务会提供：
+
+- 选点页面：`https://你的域名/`
+- 地图链接解析：`https://你的域名/api/parse?u=...&format=json`
+- 自托管脚本：`https://你的域名/dist/wloc.js`、`https://你的域名/dist/wloc-settings.js`
+- 自托管模块：`https://你的域名/modules/wloc.sgmodule` 等
+
+访问 `/modules/*` 时，服务会自动把模块里的 GitHub 脚本地址改写为当前域名，所以代理工具订阅你的域名即可。
+
+**方式一：直接运行 Node.js 18+**
+
+```bash
+git clone https://github.com/Yu9191/wloc.git
+cd wloc/worker
+npm install
+HOST=0.0.0.0 PORT=8787 npm start
+```
+
+然后用 Nginx / Caddy / 宝塔反代到 `http://127.0.0.1:8787`。如果直接访问服务器端口，也可以打开：
+
+```text
+http://服务器IP:8787/
+```
+
+**方式二：Docker（内置 Node.js 20）**
+
+```bash
+git clone https://github.com/Yu9191/wloc.git
+cd wloc
+docker build -t wloc-selfhost .
+docker run -d --name wloc -p 8787:8787 --restart unless-stopped wloc-selfhost
+```
+
+**Nginx 反代示例**
+
+```nginx
+server {
+    listen 80;
+    server_name wloc.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+部署完成后：
+
+1. 打开 `https://你的域名/` 使用选点页面。
+2. 在代理工具里订阅 `https://你的域名/modules/对应模块文件`。
+3. 如果使用快捷指令，把里面的 `wloc-spoofer.wloc.workers.dev` 替换为你的域名。
+
+</details>
+
+<details>
 <summary>高级：Pages 部署</summary>
 
 Pages 部署不支持一键按钮，需要手动执行：

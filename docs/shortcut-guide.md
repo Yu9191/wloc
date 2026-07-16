@@ -52,6 +52,34 @@ npx wrangler deploy
 
 不需要 KV、不需要数据库、不需要环境变量。
 
+## 部署到自己的服务器
+
+项目也支持直接跑在自己的服务器上，需要 Node.js 18+：
+
+```bash
+git clone https://github.com/Yu9191/wloc.git
+cd wloc/worker
+npm install
+HOST=0.0.0.0 PORT=8787 npm start
+```
+
+服务会提供：
+- `/` 选点页面
+- `/api/parse` 地图链接解析接口
+- `/dist/wloc.js` 和 `/dist/wloc-settings.js` 自托管脚本
+- `/modules/*` 自托管订阅模块（会自动把脚本地址改写为当前域名）
+
+Docker 部署：
+
+```bash
+git clone https://github.com/Yu9191/wloc.git
+cd wloc
+docker build -t wloc-selfhost .
+docker run -d --name wloc -p 8787:8787 --restart unless-stopped wloc-selfhost
+```
+
+部署后把代理工具订阅地址改成 `https://你的域名/modules/wloc.sgmodule` 等；如果使用快捷指令，把解析接口域名替换成自己的域名。
+
 ---
 
 ## 模块配置

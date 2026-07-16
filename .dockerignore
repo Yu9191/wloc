@@ -1,0 +1,6 @@
+.git
+node_modules
+worker/node_modules
+worker/.wrangler
+npm-debug.log
+.DS_Store

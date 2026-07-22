@@ -1,3 +1,5 @@
+import { getClientCoordinateHelpersSource } from "./coordinates.js";
+
 export function getPageHtml() {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -144,6 +146,7 @@ body { font-family:-apple-system,system-ui,"SF Pro","Helvetica Neue",sans-serif;
   </div>
 </div>
 <script>
+${getClientCoordinateHelpersSource()}
 const SAVE_API = 'https://gs-loc.apple.com/wloc-settings/save';
 const FAV_KEY = 'wloc_favorites';
 let lat = 22.544577, lon = 113.94114;
@@ -160,11 +163,20 @@ const tiles = {
   voyager: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {maxZoom:19, attribution:'\\u00a9 Carto'})
 };
 let currentLayer = tiles.satellite;
+let currentLayerName = 'satellite';
 currentLayer.addTo(map);
 function switchLayer(name) {
+  const center = map.getCenter();
+  const centerWgs84 = layerToWgs84(center.lat, center.lng, currentLayerName);
   map.removeLayer(currentLayer);
   currentLayer = tiles[name];
+  currentLayerName = name;
   currentLayer.addTo(map);
+  const displayCenter = wgs84ToLayer(centerWgs84.lat, centerWgs84.lon, currentLayerName);
+  const displayMarker = wgs84ToLayer(lat, lon, currentLayerName);
+  map.setView([displayCenter.lat, displayCenter.lon], map.getZoom(), {animate:false});
+  marker.setLatLng([displayMarker.lat, displayMarker.lon]);
+  if (selected) updateCoordinateLabel();
   document.querySelectorAll('.layer-btn').forEach(b => b.classList.toggle('active', b.dataset.layer === name));
 }
 let marker = L.marker([lat, lon], {draggable:true}).addTo(map);
@@ -172,15 +184,24 @@ let marker = L.marker([lat, lon], {draggable:true}).addTo(map);
 marker.on('dragend', e => { const p=e.target.getLatLng(); setPos(p.lat, p.lng); });
 map.on('click', e => { setPos(e.latlng.lat, e.latlng.lng); });
 
-function setPos(newLat, newLon) {
-  lat = newLat; lon = newLon; selected = true;
-  marker.setLatLng([lat, lon]);
-  document.getElementById('coords').textContent = '经度 ' + lon.toFixed(6) + '  纬度 ' + lat.toFixed(6);
+function updateCoordinateLabel() {
+  const note = currentLayerName === 'amap' ? ' · 高德选点已转 WGS84' : ' · WGS84';
+  document.getElementById('coords').textContent = '经度 ' + lon.toFixed(6) + '  纬度 ' + lat.toFixed(6) + note;
+}
+
+function setPos(displayLat, displayLon) {
+  const canonical = layerToWgs84(displayLat, displayLon, currentLayerName);
+  lat = canonical.lat; lon = canonical.lon; selected = true;
+  marker.setLatLng([displayLat, displayLon]);
+  updateCoordinateLabel();
 }
 
 function moveTo(newLat, newLon, zoom) {
-  setPos(newLat, newLon);
-  map.setView([lat, lon], zoom || 15);
+  lat = newLat; lon = newLon; selected = true;
+  const display = wgs84ToLayer(lat, lon, currentLayerName);
+  marker.setLatLng([display.lat, display.lon]);
+  map.setView([display.lat, display.lon], zoom || 15);
+  updateCoordinateLabel();
 }
 
 function toast(msg, ms) {
@@ -353,20 +374,21 @@ function locateMe() {
 
 function parseMapUrl(text) {
   let m;
+  const coordinateSystem = inferCoordinateSystem(text);
   m = text.match(/ll=([0-9.-]+),([0-9.-]+)/);
-  if (m) return { lat: parseFloat(m[1]), lon: parseFloat(m[2]) };
+  if (m) return { lat: parseFloat(m[1]), lon: parseFloat(m[2]), coordinateSystem };
   m = text.match(/@([0-9.-]+),([0-9.-]+)/);
-  if (m) return { lat: parseFloat(m[1]), lon: parseFloat(m[2]) };
+  if (m) return { lat: parseFloat(m[1]), lon: parseFloat(m[2]), coordinateSystem };
   m = text.match(/lnglat=([0-9.-]+),([0-9.-]+)/);
-  if (m) return { lat: parseFloat(m[2]), lon: parseFloat(m[1]) };
+  if (m) return { lat: parseFloat(m[2]), lon: parseFloat(m[1]), coordinateSystem };
   m = text.match(/(?:location|center)=([0-9.-]+),([0-9.-]+)/);
-  if (m) return { lat: parseFloat(m[2]), lon: parseFloat(m[1]) };
+  if (m) return { lat: parseFloat(m[2]), lon: parseFloat(m[1]), coordinateSystem };
   m = text.match(/([0-9]+\\.[0-9]+)[,\\s]+([0-9]+\\.[0-9]+)/);
   if (m) {
     const a = parseFloat(m[1]), b = parseFloat(m[2]);
-    if (a < 90 && b > 90) return { lat: a, lon: b };
-    if (b < 90 && a > 90) return { lat: b, lon: a };
-    return { lat: a, lon: b };
+    if (a < 90 && b > 90) return { lat: a, lon: b, coordinateSystem };
+    if (b < 90 && a > 90) return { lat: b, lon: a, coordinateSystem };
+    return { lat: a, lon: b, coordinateSystem };
   }
   return null;
 }
@@ -374,7 +396,7 @@ function parseMapUrl(text) {
 function parseUrl() {
   const input = document.getElementById('urlInput').value.trim();
   if (!input) return toast('请粘贴地图链接或坐标');
-  const result = parseMapUrl(input);
+  const result = normalizeToWgs84(parseMapUrl(input));
   if (!result) { toast('无法解析坐标，请检查链接格式', 3000); return; }
   moveTo(result.lat, result.lon, 15);
   toast('已解析: ' + result.lon.toFixed(4) + ', ' + result.lat.toFixed(4));

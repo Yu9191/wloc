@@ -120,9 +120,12 @@ https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.modul
 | longitude | 目标经度(在线选点优先) | null (透传) |
 | latitude | 目标纬度(在线选点优先) | null (透传) |
 | accuracy | 精度(米) | 25 |
+| randomRadius | 每次响应在目标点周围随机扰动的最大半径(米)，0 为关闭 | 30 |
 | logLevel | 日志级别 | info |
 
 优先级: 在线选点储存 > 模块参数 > 默认值
+
+随机扰动采用圆形范围均匀采样。每次 WLOC 响应会生成一个新坐标，同一响应内的所有 WiFi/基站记录使用同一坐标，避免单次定位数据互相冲突。
 
 </details>
 

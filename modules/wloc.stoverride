@@ -17,7 +17,7 @@ http:
       binary-mode: true
       max-size: 0
       timeout: 30
-      argument: longitude=113.94114&latitude=22.544577&accuracy=25&logLevel=info
+      argument: longitude=113.94114&latitude=22.544577&accuracy=25&randomRadius=30&logLevel=info
     - match: ^https?:\/\/gs-loc(-cn)?\.apple\.com\/wloc-settings\/save
       name: WLOC.Settings
       type: request

@@ -1,8 +1,8 @@
 name: Apple WLOC 定位修改
 desc: "修改 Apple 网络定位返回坐标 | 快捷指令(推荐): 设置地理位置 https://www.icloud.com/shortcuts/a82717d8fdad4e6280866fcf911173f7 清理恢复位置 https://www.icloud.com/shortcuts/f42632d406504f24a2cd163af4fe012f | 选点页面: https://wloc-pages.pages.dev/"
 author: Yu9191 Rewrite
-homepage: https://github.com/lemonno2333/wloc
-icon: https://raw.githubusercontent.com/lemonno2333/wloc/refs/heads/main/wloc.jpg
+homepage: https://github.com/Yu9191/wloc
+icon: https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/wloc.jpg
 category: Tools
 
 http:
@@ -26,8 +26,8 @@ http:
 
 script-providers:
   WLOC.Location:
-    url: https://raw.githubusercontent.com/lemonno2333/wloc/refs/heads/main/dist/wloc.js
+    url: https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/dist/wloc.js
     interval: 86400
   WLOC.Settings:
-    url: https://raw.githubusercontent.com/lemonno2333/wloc/refs/heads/main/dist/wloc-settings.js
+    url: https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/dist/wloc-settings.js
     interval: 86400

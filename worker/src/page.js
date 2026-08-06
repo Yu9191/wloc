@@ -361,19 +361,45 @@ function parseMapUrl(text) {
   if (m) return { lat: parseFloat(m[2]), lon: parseFloat(m[1]) };
   m = text.match(/(?:location|center)=([0-9.-]+),([0-9.-]+)/);
   if (m) return { lat: parseFloat(m[2]), lon: parseFloat(m[1]) };
-  m = text.match(/([0-9]+\\.[0-9]+)[,\\s]+([0-9]+\\.[0-9]+)/);
+  m = text.match(/(-?[0-9]+\\.[0-9]+)[,\\s]+(-?[0-9]+\\.[0-9]+)/);
   if (m) {
     const a = parseFloat(m[1]), b = parseFloat(m[2]);
-    if (a < 90 && b > 90) return { lat: a, lon: b };
-    if (b < 90 && a > 90) return { lat: b, lon: a };
+    // 纬度绝对值不超过 90, 经度可达 180: 按绝对值判断谁是经度, 否则
+    // -122.009 这类西经会被当成纬度 (-122 < 90 恒成立)。
+    if (Math.abs(a) <= 90 && Math.abs(b) > 90) return { lat: a, lon: b };
+    if (Math.abs(b) <= 90 && Math.abs(a) > 90) return { lat: b, lon: a };
     return { lat: a, lon: b };
   }
   return null;
 }
 
-function parseUrl() {
+// 含链接的输入交给服务端 /api/parse: 浏览器读不到跨域 302 的 Location 头, 短链
+// 只能由 worker 展开; 服务端还认 coordinate= 并按来源做 GCJ-02->WGS84 换算。
+// 纯坐标文本本地直接解析 —— 它也是唯一不需要坐标系换算的输入, 免去一次往返。
+async function parseUrl() {
   const input = document.getElementById('urlInput').value.trim();
   if (!input) return toast('请粘贴地图链接或坐标');
+
+  const low = input.toLowerCase();
+  if (low.includes('http://') || low.includes('https://')) {
+    toast('解析中...');
+    let data;
+    try {
+      const r = await fetch('/api/parse?format=json&u=' + encodeURIComponent(input));
+      data = await r.json();
+    } catch (e) {
+      toast('解析服务不可达', 3000);
+      return;
+    }
+    if (!data || data.error || typeof data.lat !== 'number') {
+      toast(data && data.error ? data.error : '无法解析坐标，请检查链接格式', 3000);
+      return;
+    }
+    moveTo(data.lat, data.lon, 15);
+    toast(data.name ? '已解析: ' + data.name : '已解析: ' + data.lon.toFixed(4) + ', ' + data.lat.toFixed(4));
+    return;
+  }
+
   const result = parseMapUrl(input);
   if (!result) { toast('无法解析坐标，请检查链接格式', 3000); return; }
   moveTo(result.lat, result.lon, 15);
@@ -396,10 +422,13 @@ async function searchPlace() {
 
 document.addEventListener('paste', e => {
   const text = (e.clipboardData||window.clipboardData).getData('text');
-  if (text && (text.includes('map') || text.includes('loc') || text.includes('lnglat') || /[0-9]+\\.[0-9]+/.test(text))) {
-    document.getElementById('urlInput').value = text;
-    setTimeout(parseUrl, 200);
-  }
+  if (!text) return;
+  if (!(text.includes('map') || text.includes('loc') || text.includes('lnglat') || /[0-9]+\\.[0-9]+/.test(text))) return;
+  const input = document.getElementById('urlInput');
+  // 粘贴目标本来就是这个输入框时, 让浏览器原生插入即可; 此处再赋一次值,
+  // 原生插入会叠加在后面, 结果是同一段文本出现两遍。
+  if (e.target !== input) input.value = text;
+  setTimeout(parseUrl, 200);
 });
 document.getElementById('searchInput').addEventListener('keydown', e => { if(e.key==='Enter') searchPlace(); });
 document.getElementById('urlInput').addEventListener('keydown', e => { if(e.key==='Enter') parseUrl(); });

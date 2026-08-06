@@ -57,12 +57,24 @@ https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.modul
 - **高德**：分享出来是短链，真实坐标只藏在 302 跳转的 `Location` 头里，且是 GCJ-02 偏移坐标。快捷指令既读不到跳转头、也难做坐标换算，所以由 worker 跟跳转 → 抠坐标 → GCJ-02→WGS84 → 返回经纬度。
 - **苹果地图**：链接里直接带 `coordinate=纬度,经度`，但在**中国大陆同样是 GCJ-02 偏移坐标**，所以和高德一样由 worker 做 GCJ-02→WGS84 换算后返回；境外坐标会自动跳过换算（`out_of_china` 判断）原样返回。除了统一坐标系，走同一接口也方便统一处理短链、文本夹链接、名称解码等。
 
-**隐私：** `/api/parse` 是纯转发解析——收到链接 → 跟跳转 → 解析坐标 → 返回 JSON，全程不写任何存储、不记日志、不缓存，处理完即丢。
+**隐私：** `/api/parse` 是纯转发解析——收到链接 → 跟跳转 → 解析坐标 → 返回 JSON，全程不写任何存储、不记日志、不缓存，处理完即丢（`wrangler.jsonc` 里已显式关闭 observability）。跟跳转时只接受 http/https，单次请求 8 秒超时、只读响应正文前 512 KB。
 
 **不放心可自行部署：** worker 源码完全开源，可自己部署一份替换上面的地址：
 
-- 解析逻辑：[`worker/src/parse.js`](worker/src/parse.js)，路由：[`worker/src/index.js`](worker/src/index.js)
+- 路由：[`worker/src/index.js`](worker/src/index.js)
+- 链接解析与坐标换算：[`worker/src/parse.js`](worker/src/parse.js)
+- 选点页面：[`worker/src/page.js`](worker/src/page.js)、[`worker/src/gcj-browser.js`](worker/src/gcj-browser.js)
 - 部署后把快捷指令里的 `wloc-spoofer.wloc.workers.dev` 换成你自己的 worker 域名即可。
+
+解析逻辑带一套不联网的回归测试，改动后跑一下：
+
+```bash
+cd worker && npm install && npm test
+```
+
+**坐标系说明：** 页面内部一律以 WGS84 为准。底图切到「高德」时，瓦片画的是 GCJ-02
+地物，与 Leaflet 的 WGS84 像素映射差着一个偏移量（深圳一带约 600 米），页面会在
+选点/落点时自动双向换算，所以在任意底图上点选得到的都是同一个 WGS84 坐标。
 
 ---
 
@@ -214,8 +226,11 @@ Pages 部署不支持一键按钮，需要手动执行：
 git clone https://github.com/Yu9191/wloc.git
 cd wloc/worker
 npm install
-npx wrangler pages deploy dist --project-name <自定义项目名>
+npm run pages:deploy
 ```
+
+> 必须走 `npm run pages:deploy`（它带 `-c wrangler.pages.jsonc`）。直接跑
+> `wrangler pages deploy dist` 会丢掉配置里的 compatibility 设定。
 
 部署时会提示设置 production branch，输入 `main` 即可。部署成功后得到 `https://<项目名>.pages.dev` 地址。
 

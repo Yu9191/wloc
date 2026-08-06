@@ -16,10 +16,26 @@ export function safeDecode(s) {
 //  高德 ?p=POIID,纬度,经度,名称,城市  (逗号或 %2C)
 //  高德 ?q=纬度,经度,名称           (新版分享链, 逗号或 %2C)
 //  纯文本 纬度,经度
+//  高德 URI ?lnglat=/?position=经度,纬度  (与上面几条顺序相反)
 // opts.allowBare=false 时不启用"两个裸小数"兜底。扫描页面正文必须关掉它:
 // 正文里任何一对小数都会命中(百度页面的 "view_dir":"-0.8477,0.0000" 就是如此),
 // 结果是静默返回一个错误坐标 —— 比解析失败危险得多。
 export function extractFromString(s, opts) {
+  const hit = extractRaw(s, opts);
+  // 值域是最后一道闸。上面的兜底规则不带语义, 匹配到什么就返回什么, 经纬颠倒
+  // (lat=113.9)或纯粹的垃圾数字都能一路走到调用方。这里拦掉的是"解析成了错的",
+  // 它比"解析失败"危险得多 —— 后者会提示用户, 前者会把设备定位挪到别处。
+  return hit && inRange(hit.lat, hit.lon) ? hit : null;
+}
+
+// 纬度绝对值 <= 90, 经度 <= 180; NaN / Infinity 一并挡掉。
+export function inRange(lat, lon) {
+  return (
+    Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180
+  );
+}
+
+function extractRaw(s, opts) {
   if (!s) return null;
   const allowBare = !opts || opts.allowBare !== false;
   const str = String(s);
@@ -27,10 +43,7 @@ export function extractFromString(s, opts) {
   // 前缀 (?:^|[?&]) 是必需的: 无锚定时 "ll=" 会匹配任何以 ll 结尾的参数名,
   // 例如 scroll=1.5,2.5 / pull=... 都会被当成坐标。
   m = str.match(/(?:^|[?&])(?:coordinate|ll|sll)=(-?\d{1,3}\.\d+)(?:,|%2C)(-?\d{1,3}\.\d+)/i);
-  if (m) {
-    const nm = str.match(/[?&]name=([^&]+)/i);
-    return { lat: +m[1], lon: +m[2], name: nm ? safeDecode(nm[1]) : "", src: "apple" };
-  }
+  if (m) return { lat: +m[1], lon: +m[2], name: queryName(str), src: "apple" };
   // Google: !3d<lat>!4d<lon> 是地点针脚的真实坐标, 必须优先于 @lat,lon —— 后者是
   // 相机视口中心, 与缩放级别绑定, 可以离目标十几公里。
   m = str.match(/!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/);
@@ -43,6 +56,11 @@ export function extractFromString(s, opts) {
     /[?&]q=(-?\d{1,3}\.\d+)(?:,|%2C)(-?\d{1,3}\.\d+)(?:(?:,|%2C)((?:(?!,|%2C|&).)+))?/i
   );
   if (m) return { lat: +m[1], lon: +m[2], name: m[3] ? safeDecode(m[3]) : "", src: "amap" };
+  // 高德 URI API 的 lnglat= / position= 是「经度,纬度」序, 与上面所有规则相反。
+  // 不要照搬旧页面里的 location=/center= 规则: 那条也按 lon,lat 解, 但百度的
+  // location= 实际是 lat,lng, 搬过来会把百度链接解颠倒。宁可少认一种也不要认错。
+  m = str.match(/(?:^|[?&])(?:lnglat|position)=(-?\d{1,3}\.\d+)(?:,|%2C)(-?\d{1,3}\.\d+)/i);
+  if (m) return { lat: +m[2], lon: +m[1], name: queryName(str), src: "amap" };
   // 只有在没有针脚坐标时才退而求其次用视口中心。
   m = str.match(/\/maps\/[^\s]*@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/);
   if (m) return { lat: +m[1], lon: +m[2], name: googleName(str), src: "google" };
@@ -53,10 +71,63 @@ export function extractFromString(s, opts) {
   return null;
 }
 
+// 查询串里的 ?name=/ &name= —— 苹果地图和高德 URI 都用这个键。
+function queryName(str) {
+  const m = str.match(/[?&]name=([^&]+)/i);
+  return m ? safeDecode(m[1]) : "";
+}
+
 // Google 的地名在路径里: /maps/place/Apple+Park/@...
 function googleName(str) {
   const m = str.match(/\/maps\/place\/([^/@?]+)/);
   return m ? safeDecode(m[1]).replace(/\+/g, " ").trim() : "";
+}
+
+// /api/parse 会去 fetch 调用方给的任意 URL。Workers 出网到不了内网, 所以经典的
+// SSRF(打内网/元数据服务)基本不成立, 剩下的风险是资源耗尽 —— 一个永不结束的响应
+// 能把子请求挂死, 一个几百 MB 的响应能把 128 MB 的 Worker 内存打爆。下面两个常量
+// 和 isFetchable() 挡的就是这个, 而不是"防止访问某些站点"。
+const FETCH_TIMEOUT_MS = 8000;
+const MAX_BODY_BYTES = 512 * 1024;
+
+function isFetchable(u) {
+  let url;
+  try {
+    url = new URL(u);
+  } catch (e) {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const h = url.hostname.toLowerCase();
+  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal")) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.startsWith("[")) return false; // IP 字面量
+  return true;
+}
+
+// 只读前 MAX_BODY_BYTES, 读满就掐掉连接。坐标总在页面靠前的位置, 读全文没有收益。
+async function readCapped(resp) {
+  if (!resp.body || typeof resp.body.getReader !== "function") {
+    return (await resp.text()).slice(0, MAX_BODY_BYTES);
+  }
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (total < MAX_BODY_BYTES) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    total += value.length;
+  }
+  try {
+    await reader.cancel();
+  } catch (e) {}
+  const buf = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    buf.set(c, off);
+    off += c.length;
+  }
+  return new TextDecoder("utf-8", { fatal: false }).decode(buf);
 }
 
 // 接受原文(可能含中文地名+链接), 抠出 URL, 必要时跟随重定向展开短链, 提取坐标。
@@ -73,10 +144,12 @@ export async function parseCoords(raw) {
   if (urlMatch) {
     let cur = target;
     for (let i = 0; i < 5; i++) {
+      if (!isFetchable(cur)) break;
       let resp;
       try {
         resp = await fetch(cur, {
           redirect: "manual",
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
           headers: {
             "user-agent":
               "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0 Mobile/24A5370h Safari/604.1",
@@ -99,7 +172,7 @@ export async function parseCoords(raw) {
       hit = extractFromString(resp.url);
       if (hit) return hit;
       try {
-        const body = await resp.text();
+        const body = await readCapped(resp);
         hit = extractFromString(body, { allowBare: false });
         if (hit) return hit;
         // 百度分享链展开后 URL 里只有 uid, 坐标以 BD09MC 墨卡托米制藏在正文中。

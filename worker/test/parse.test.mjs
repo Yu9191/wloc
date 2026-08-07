@@ -12,6 +12,7 @@ import {
   toWgs84,
   wgs84ToGcj02,
   gcj02ToWgs84,
+  usesWgs84Locally,
   inRange,
   round6,
 } from "../src/parse.js";
@@ -146,6 +147,83 @@ test("toWgs84: 按来源分派, text 源不做任何换算", () => {
   }
   assert.deepEqual(toWgs84(p.lat, p.lon, "text"), p);
   assert.deepEqual(toWgs84(p.lat, p.lon, undefined), p);
+});
+
+// ── 港澳台 ──────────────────────────────────────────────────────────
+// 每个基准点都是分享链接里的原始值, 与设备 GPS 逐位相同, 即真值本身。
+const HK = { lat: 22.284774, lon: 114.159437 }; // ifc mall
+const MO = { lat: 22.148148, lon: 113.555399 }; // Galaxy Macau
+const TW = { lat: 25.033626, lon: 121.564215 }; // Taipei 101
+
+test("港澳台: 苹果/Google 发的是 WGS84, 不得再做 GCJ 反算", () => {
+  for (const [名, p] of [["香港", HK], ["澳门", MO], ["台湾", TW]]) {
+    for (const src of ["apple", "google"]) {
+      const w = toWgs84(p.lat, p.lon, src);
+      assert.ok(
+        distMeters(w, p) < 0.001,
+        `${名} ${src} 被改动了 ${distMeters(w, p).toFixed(0)} 米, 应原样返回`
+      );
+    }
+  }
+});
+
+test("港澳台: 高德/百度仍是偏移坐标, 必须继续换算", () => {
+  // 实测依据: 把卫星图与高德瓦片放在同一坐标上比对, 香港的高德图差 596 米,
+  // 与大陆同量级 —— 高德在港澳台并没有改用 WGS84。
+  for (const [名, p] of [["香港", HK], ["澳门", MO], ["台湾", TW]]) {
+    const w = toWgs84(p.lat, p.lon, "amap");
+    assert.ok(
+      distMeters(w, p) > 300,
+      `${名} 高德只改动了 ${distMeters(w, p).toFixed(0)} 米, 应当有 GCJ 量级的偏移`
+    );
+    assert.ok(!usesWgs84Locally(p.lat, p.lon, "amap"), `${名} amap 不该走 WGS84 直通`);
+    assert.ok(!usesWgs84Locally(p.lat, p.lon, "baidu"), `${名} baidu 不该走 WGS84 直通`);
+  }
+});
+
+test("香港边界: 深圳一侧必须仍按大陆处理", () => {
+  // 香港北界紧贴深圳, 用矩形圈会把这些点一起吞掉 —— 那才是最常用的坐标区域。
+  const 深圳 = [
+    ["万象天地", 22.544865, 113.951072],
+    ["蛇口海上世界", 22.4795, 113.9245],
+    ["福田口岸", 22.5310, 114.0730],
+    ["罗湖", 22.5480, 114.1180],
+    ["盐田", 22.5570, 114.2350],
+  ];
+  for (const [名, lat, lon] of 深圳) {
+    assert.ok(!usesWgs84Locally(lat, lon, "apple"), `${名} 被误判成香港`);
+    assert.ok(distMeters(toWgs84(lat, lon, "apple"), { lat, lon }) > 300, `${名} 应当做 GCJ 换算`);
+  }
+});
+
+test("香港边界: 香港一侧必须按 WGS84 处理", () => {
+  const 香港 = [
+    ["中环 ifc", 22.284774, 114.159437],
+    ["元朗", 22.4450, 114.0300],
+    ["天水围", 22.4580, 114.0050],
+    ["上水", 22.5010, 114.1280],
+    ["赤鱲角机场", 22.3080, 113.9180],
+    ["西贡", 22.3830, 114.2710],
+  ];
+  for (const [名, lat, lon] of 香港) {
+    assert.ok(usesWgs84Locally(lat, lon, "apple"), `${名} 未被识别为香港`);
+  }
+});
+
+test("港澳台判定不得波及大陆其它城市", () => {
+  const 大陆 = [
+    ["北京", 39.908823, 116.39747],
+    ["上海", 31.230416, 121.473701],
+    ["广州", 23.129163, 113.264435],
+    ["厦门", 24.4798, 118.0894], // 紧邻金门, 台湾框不得吞掉
+    ["福州", 26.0745, 119.2965],
+    ["珠海拱北", 22.2230, 113.5480], // 紧邻澳门关闸
+    ["温州", 27.9940, 120.6990],
+  ];
+  for (const [名, lat, lon] of 大陆) {
+    assert.ok(!usesWgs84Locally(lat, lon, "apple"), `${名} 被误判成港澳台`);
+    assert.ok(distMeters(toWgs84(lat, lon, "apple"), { lat, lon }) > 300, `${名} 应当做 GCJ 换算`);
+  }
 });
 
 test("境外坐标不做 GCJ 换算 (out_of_china)", () => {

@@ -228,13 +228,80 @@ export function bd09ToGcj02(lat, lon) {
   return { lat: z * Math.sin(t), lon: z * Math.cos(t) };
 }
 
+// ---- 港澳台: 苹果/Google 在这三地发的是 WGS84 ----
+//
+// GCJ-02 的偏移只施加于中国大陆, 但 gcjOutOfChina 是个粗矩形, 把港澳台整个圈在
+// 里面, 于是对本来就是 WGS84 的坐标白做一次反算, 实测偏约 570~600 米。
+//
+// 关键在于: 这不是一个纯地理判断, 必须按来源区分。高德在香港的瓦片实测仍是
+// GCJ-02(把卫星图和高德图放在同一坐标上比对, 差 596 米, 与大陆同量级), 百度的
+// BD-09 建在 GCJ 之上同理。所以只有 apple/google 才在港澳台跳过换算。
+//
+// 实测基准(链接原始值即真值, 与设备 GPS 逐位相同):
+//   香港 ifc mall       22.284774, 114.159437
+//   澳门 Galaxy Macau   22.148148, 113.555399
+//   台北 101            25.033626, 121.564215
+
+// 香港必须用多边形而不是矩形: 任何包住香港的矩形都会把深圳南山/福田一起圈进去,
+// 而深圳正是本项目最常用的坐标区域。北界沿深圳河与深圳湾, 自西向东抬升。
+// 这条线是近似的, 口岸一带(罗湖/落马洲/沙头角)两侧约 1 公里内可能判错 ——
+// 那些地方本身就骑在边界上, 无法用几个折点分清。
+const HK_POLY = [
+  [113.8, 22.1],
+  [113.8, 22.43],
+  [113.9, 22.455],
+  [113.98, 22.487],
+  [114.05, 22.507],
+  [114.11, 22.527],
+  [114.17, 22.543],
+  [114.24, 22.552],
+  [114.32, 22.545],
+  [114.5, 22.45],
+  [114.5, 22.1],
+];
+
+// 射线法。poly 的点是 [经度, 纬度]。
+function pointInPoly(lat, lon, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if (yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+// 澳门与珠海拱北只隔一道关闸(约 250 米), 矩形分不开; 北界取关闸纬度, 误判范围
+// 限于口岸那一小片。
+function inMacau(lat, lon) {
+  return lat >= 22.1 && lat <= 22.215 && lon >= 113.525 && lon <= 113.605;
+}
+
+// 台湾本岛 + 澎湖。金门/马祖紧贴厦门与福州, 用矩形圈会误伤大陆, 故不含。
+function inTaiwan(lat, lon) {
+  return lat >= 21.85 && lat <= 25.35 && lon >= 119.3 && lon <= 122.1;
+}
+
+// 该来源在该位置是否直接提供 WGS84(即不需要做 GCJ 反算)。
+export function usesWgs84Locally(lat, lon, src) {
+  if (src !== "apple" && src !== "google") return false;
+  return inMacau(lat, lon) || inTaiwan(lat, lon) || pointInPoly(lat, lon, HK_POLY);
+}
+
 // 按来源把坐标统一换算到 WGS84。text 源(用户直接输入的裸坐标)视为已是 WGS84。
+//
+// 注意换算与分派的分工: gcj02ToWgs84 回答"这两个坐标系在此处相差多少", 这个关系
+// 在香港同样成立(高德就在用), 所以港澳台的例外不能塞进那个函数里 —— 否则就没法
+// 让苹果走一条路、高德走另一条路了。
 export function toWgs84(lat, lon, src) {
   if (src === "baidu") {
     const g = bd09ToGcj02(lat, lon);
     return gcj02ToWgs84(g.lat, g.lon);
   }
-  if (src === "amap" || src === "apple" || src === "google") return gcj02ToWgs84(lat, lon);
+  if (src === "amap" || src === "apple" || src === "google") {
+    if (usesWgs84Locally(lat, lon, src)) return { lat, lon };
+    return gcj02ToWgs84(lat, lon);
+  }
   return { lat, lon };
 }
 

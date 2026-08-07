@@ -91,6 +91,42 @@ test("百度: 像素级 x/y 不得被当成墨卡托米制", () => {
   assert.equal(extractBaiduFromBody('"x":"320","y":"480"'), null);
 });
 
+test("百度网页版 URL 里的 BD09MC: /poi/名称/@x,y,19z", () => {
+  // 港澳台的百度分享短链在服务端拿不到坐标(需页面脚本带反爬令牌查 detailConInfo),
+  // 但用户在浏览器打开后地址栏会变成这个形式, 复制过来就能解析 —— 这是那条唯一
+  // 走得通的路, 必须守住。下列 x/y 均为浏览器实测所得。
+  const 用例 = [
+    ["香港 ifc", "12709535.375,2529761.45", { lat: 22.284774, lon: 114.159437 }, 100],
+    ["台北 101", "13533702.855,2862107.79", { lat: 25.033626, lon: 121.564215 }, 100],
+    ["澳门 Galaxy", "12642194.145,2513614.06", { lat: 22.148148, lon: 113.555399 }, 300],
+  ];
+  for (const [名, xy, truth, tol] of 用例) {
+    const u = `https://map.baidu.com/poi/Apple/@${xy},19z?uid=abc`;
+    const hit = extractFromString(u);
+    assert.ok(hit, `${名} 未解析出坐标`);
+    assert.equal(hit.src, "baidu");
+    const w = toWgs84(hit.lat, hit.lon, hit.src);
+    const d = distMeters(w, truth);
+    assert.ok(d < tol, `${名} 偏差 ${d.toFixed(0)} 米, 应 < ${tol}`);
+  }
+  // 地名从路径里取
+  assert.equal(
+    extractFromString("https://map.baidu.com/poi/Apple%E5%8F%B0%E5%8C%97101/@13533702.855,2862107.79,19z").name,
+    "Apple台北101"
+  );
+});
+
+test("百度的米制 @ 规则不得吃掉 Google 的经纬度 @", () => {
+  // 两者都是 @a,b 形式, 靠位数区分: 墨卡托是 6~9 位整数, 经纬度是 1~3 位。
+  near(extractFromString("https://www.google.com/maps/@37.4391234,-122.0515788,11z"), {
+    lat: 37.4391234,
+    lon: -122.0515788,
+    src: "google",
+  });
+  // 非百度域名的大数字 @ 不该被当成 BD09MC
+  assert.equal(extractFromString("https://example.com/x/@12709535.375,2529761.45,19z"), null);
+});
+
 test("回归: 苹果 / 高德 / 裸文本的原有行为不变", () => {
   near(
     extractFromString("https://maps.apple.com/place?coordinate=31.230416,121.473701&name=%E5%A4%96%E6%BB%A9"),

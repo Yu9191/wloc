@@ -61,6 +61,15 @@ function extractRaw(s, opts) {
   // location= 实际是 lat,lng, 搬过来会把百度链接解颠倒。宁可少认一种也不要认错。
   m = str.match(/(?:^|[?&])(?:lnglat|position)=(-?\d{1,3}\.\d+)(?:,|%2C)(-?\d{1,3}\.\d+)/i);
   if (m) return { lat: +m[2], lon: +m[1], name: queryName(str), src: "amap" };
+  // 百度网页版把 BD09MC 米制坐标写进路径: /poi/名称/@12709535.375,2529761.45,19z
+  // 位数(6~9)本身就把它和经纬度形式的 @ 区分开了。
+  // 这是港澳台百度链接在服务端唯一能拿到坐标的形式 —— 那些地区的分享短链展开后
+  // 正文里没有坐标, 得由页面脚本带反爬令牌去查 detailConInfo, Worker 复现不了。
+  m = str.match(/baidu\.com\/[^\s]*?@(-?\d{6,9}(?:\.\d+)?)(?:,|%2C)(-?\d{6,9}(?:\.\d+)?)/i);
+  if (m) {
+    const bd = bd09mcToBd09(+m[1], +m[2]);
+    if (bd) return { lat: bd.lat, lon: bd.lon, name: baiduPathName(str), src: "baidu" };
+  }
   // 只有在没有针脚坐标时才退而求其次用视口中心。
   m = str.match(/\/maps\/[^\s]*@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/);
   if (m) return { lat: +m[1], lon: +m[2], name: googleName(str), src: "google" };
@@ -75,6 +84,12 @@ function extractRaw(s, opts) {
 function queryName(str) {
   const m = str.match(/[?&]name=([^&]+)/i);
   return m ? safeDecode(m[1]) : "";
+}
+
+// 百度网页版的地名在路径里: /poi/Apple台北101/@...
+function baiduPathName(str) {
+  const m = str.match(/\/poi\/([^/@?]+)/);
+  return m ? safeDecode(m[1]).trim() : "";
 }
 
 // Google 的地名在路径里: /maps/place/Apple+Park/@...
@@ -130,6 +145,14 @@ async function readCapped(resp) {
   return new TextDecoder("utf-8", { fatal: false }).decode(buf);
 }
 
+function isBaiduHost(u) {
+  try {
+    return /(^|\.)baidu\.com$/i.test(new URL(u).hostname);
+  } catch (e) {
+    return false;
+  }
+}
+
 // 接受原文(可能含中文地名+链接), 抠出 URL, 必要时跟随重定向展开短链, 提取坐标。
 export async function parseCoords(raw) {
   const text = String(raw || "").trim();
@@ -176,13 +199,22 @@ export async function parseCoords(raw) {
         hit = extractFromString(body, { allowBare: false });
         if (hit) return hit;
         // 百度分享链展开后 URL 里只有 uid, 坐标以 BD09MC 墨卡托米制藏在正文中。
-        if (/(^|\.)baidu\.com$/i.test(new URL(cur).hostname)) {
+        if (isBaiduHost(cur)) {
           hit = extractBaiduFromBody(body);
           if (hit) return hit;
         }
       } catch (e) {}
       break;
     }
+  }
+  // 百度对大陆 POI 会把坐标直出在移动版页面里, 港澳台的则不会 —— 那边要靠页面
+  // 脚本带 auth/seckey 反爬令牌去查 detailConInfo, 服务端无法复现。与其只说一句
+  // "解析不了", 不如告诉用户那条确实走得通的路。
+  if (urlMatch && isBaiduHost(target)) {
+    throw new Error(
+      "百度这条链接的坐标要靠网页脚本才能取到(港澳台的 POI 多为此类)。" +
+        "请在浏览器打开该链接, 等地址栏变成 map.baidu.com/poi/名称/@数字,数字,19z 之后, 复制整条地址再粘贴。"
+    );
   }
   throw new Error("未能从链接中解析出经纬度");
 }

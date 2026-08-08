@@ -13,8 +13,8 @@ randomRadius = input, "0", tag=扰动半径(米，0为关闭)
 logLevel = select, "info", "off", "error", "warn", "debug", "all", tag=日志级别
 
 [Script]
-http-response ^https?:\/\/gs-loc(-cn)?\.apple\.com\/clls\/wloc script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/dist/wloc.js, requires-body=true, binary-body-mode=true, timeout=30, tag=Apple WLOC, argument=[{longitude},{latitude},{accuracy},{randomRadius},{logLevel}]
+http-response ^https?:\/\/(?:gs-loc(?:-cn)?\.apple\.com|gsp-ssl\.ls\.apple\.com|bluedot\.is\.autonavi\.com(?:\.gds\.alibabadns\.com)?)\/clls\/wloc script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/dist/wloc.js, requires-body=true, binary-body-mode=true, timeout=30, tag=Apple WLOC, argument=[{longitude},{latitude},{accuracy},{randomRadius},{logLevel}]
 http-request ^https?:\/\/gs-loc(-cn)?\.apple\.com\/wloc-settings\/save script-path=https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/dist/wloc-settings.js, timeout=10, tag=WLOC Settings
 
 [MITM]
-hostname = gs-loc.apple.com, gs-loc-cn.apple.com
+hostname = gs-loc.apple.com, gs-loc-cn.apple.com, gsp-ssl.ls.apple.com, bluedot.is.autonavi.com, bluedot.is.autonavi.com.gds.alibabadns.com

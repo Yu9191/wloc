@@ -28,6 +28,15 @@ https://raw.githubusercontent.com/Yu9191/wloc/refs/heads/main/modules/wloc.modul
 > Egern 可直接使用 Surge 模块
 > Stash 请直接订阅上面的 `.stoverride`，无需用 Script Hub 转换
 
+### 默认扩展域名支持
+
+默认模块已覆盖目前已知的完整 WLOC 域名集合：
+
+- `gsp-ssl.ls.apple.com`
+- `bluedot.is.autonavi.com`
+- `bluedot.is.autonavi.com.gds.alibabadns.com`
+
+
 ---
 
 ## 快捷指令（推荐，最方便）

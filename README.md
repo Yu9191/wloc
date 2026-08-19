@@ -266,6 +266,49 @@ Pages 和 Workers 功能完全一致，按需选择即可。
 </details>
 
 <details>
+<summary><b>部署到腾讯云 EdgeOne Pages（推荐，国内访问更快）</b></summary>
+
+EdgeOne Pages 是腾讯云的边缘托管平台，国内访问延迟更低。本项目已改造为**零依赖**，
+选点页面后端可直接跑在 EdgeOne 的 `edge-functions`（边缘函数）上。三种部署方式任选其一：
+
+**方式一：GitHub Actions 一键部署（推荐，Fork 后零命令）**
+
+1. 在 EdgeOne Pages 控制台生成 **API Token**（设置 → API Token）。
+2. 在本仓库 `Settings → Secrets` 中添加名为 `EDGEONE_API_TOKEN` 的仓库密钥，值填上面的 Token。
+3. 推送 `main` 分支，或到 `Actions → Deploy to EdgeOne Pages` 手动点击 `Run workflow`。
+
+首次运行会自动创建名为 `wloc-spoofer` 的 Pages 项目，部署成功后获得
+`https://<项目名>.edgeone.app` 地址，用这个地址选点即可。
+
+> 工作流文件：`.github/workflows/deploy-edgeone.yml`，部署目录为 `worker/`。
+
+**方式二：EdgeOne CLI 一键部署**
+
+```bash
+git clone https://github.com/Yu9191/wloc.git
+cd wloc/worker
+npm install -g edgeone
+edgeone login
+edgeone pages deploy -n wloc-spoofer
+```
+
+**方式三：控制台 Git 导入（图形化一键）**
+
+1. EdgeOne Pages 控制台 → 创建项目 → 导入 Git 仓库，授权并选择本仓库。
+2. 构建配置：**根目录** 填 `/worker`，框架预设选 `Other`，其余保持默认
+   （`worker/edgeone.json` 已内置 `outputDirectory` 等配置）。
+3. 点击「部署」，等待完成即可获得 `*.edgeone.app` 地址。
+
+> 若你的控制台版本不支持指定子目录根目录，请改用方式一 / 二的 CLI 部署
+> （部署目录同样是 `worker/`，`edge-functions/` 在其中即可被正确识别）。
+
+**实现说明**：EdgeOne 边缘函数（V8 运行时）不支持 npm 包，因此选点页面后端已从 Hono
+改为**零依赖**实现（`worker/src/index.js` 仅用标准 Web API）。Cloudflare Workers /
+Cloudflare Pages / EdgeOne Pages 三端现在共用同一份代码，互不影响。
+
+</details>
+
+<details>
 <summary><b>注意事项</b></summary>
 
 - 需要 MITM 证书信任 `gs-loc.apple.com` 和 `gs-loc-cn.apple.com`

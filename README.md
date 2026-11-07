@@ -1,4 +1,8 @@
 <p align="center">
+  <strong>简体中文</strong> · <a href="./README.en.md">English</a>
+</p>
+
+<p align="center">
   <img src="wloc.jpg" width="144" />
 </p>
 

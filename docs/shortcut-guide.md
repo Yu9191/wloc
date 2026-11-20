@@ -26,7 +26,8 @@
 https://你的worker域名/
 ```
 
-> Worker 是纯静态页面，不存储任何数据。坐标直接写入你的设备本地。
+> Worker 不存储任何数据。坐标直接写入你的设备本地；`/api/parse` 只在解析链接时
+> 临时向地图服务发一次请求，处理完即丢，不写存储、不落日志。
 
 ### 3. 选择位置
 - **点击地图** — 直接点选
@@ -35,22 +36,24 @@ https://你的worker域名/
 - **当前位置** — 使用浏览器定位
 
 ### 4. 储存到设备
-点击「� 储存到设备」→ 显示 ✓ 即成功。
+点击「储存到设备」→ 显示 ✓ 即成功。
 
 ---
 
 ## 部署公共选点页面
 
-Worker 是纯静态页面服务，无需任何绑定：
+无需任何绑定：
 
 ```bash
 cd worker
-npx wrangler deploy
+npm install
+npm run deploy
 ```
 
-或在 CF Dashboard → Workers → 新建 Worker → 粘贴 `wloc-worker.js` → 部署。
-
 不需要 KV、不需要数据库、不需要环境变量。
+
+> Worker 由 `worker/src/` 下的多个模块打包而成（页面模板、链接解析、坐标换算），
+> 不能靠在 Dashboard 里粘贴单个文件来部署，请用上面的 wrangler 流程。
 
 ---
 
